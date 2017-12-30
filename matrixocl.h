@@ -17,50 +17,15 @@ using std::cin;
 using std::endl;
 using std::out_of_range;
 
-cl_platform_id* & get_platforms() {
-	cl_int errNum;
-	cl_uint numofpt;
-	cl_platform_id* platforms = NULL;
-	errNum = clGetPlatformIDs(0, NULL, &numofpt);//get the total number of platforms
-	if (errNum != CL_SUCCESS || numofpt <= 0) {
-		std::cerr << "Failed to find any OpenCL platforms" << std::endl;
-	}
-	platforms = new cl_platform_id[numofpt];
-	errNum = clGetPlatformIDs(numofpt, platforms, NULL);
-	if (errNum != CL_SUCCESS || numofpt <= 0) {
-		std::cerr << "Failed to find any OpenCL platforms" << std::endl;
-	}
-	return platforms;
-}
-cl_device_id*& get_devices(cl_platform_id& pt, const cl_device_type& device_type) {
-	cl_int errNum;
-	cl_uint numdevices;
-	cl_device_id* devices = NULL;
-	errNum = clGetDeviceIDs(pt, device_type, 0, NULL, &numdevices);
-	if (errNum != CL_SUCCESS || numdevices <= 0) {
-		std::cerr << "Failed to find any OpenCL devices" << std::endl;
-	}
-	devices = new cl_device_id[numdevices];
-	errNum = clGetDeviceIDs(pt, device_type, numdevices, devices, NULL);
-	if (errNum != CL_SUCCESS || numdevices <= 0) {
-		std::cerr << "Failed to find any OpenCL devices" << std::endl;
-	}
-	return devices;
-}
-
-cl_context& creat_context(const cl_platform_id& pt, const cl_device_id& devices, const int& numofdevcies) {
-	cl_context_properties prop[] = { CL_CONTEXT_PLATFORM,(cl_context_properties)pt,0 };
-	cl_context context = clCreateContext(prop, numofdevcies, &devices, NULL, NULL, NULL);
-	return context;
-}
-
+cl_platform_id* & get_platforms() ;
+cl_device_id*& get_devices(cl_platform_id& pt, const cl_device_type& device_type) ;
+cl_context& creat_context(const cl_platform_id& pt, const cl_device_id& devices, const int& numofdevcies) ;
 
 class matrix {
 	friend matrix mean(const matrix&);
 	friend matrix inv(matrix a);
 	friend matrix operator*(matrix& A, const double &B);
 	friend matrix operator* (const matrix& A, const matrix& B);
-	friend matrix operator* (const matrix& A, const double &B);
 	friend matrix operator+ (const matrix& A, const matrix &B);
 	friend matrix operator- (const matrix& A, const matrix& B);
 	friend matrix operator- (matrix& A, matrix& B);
@@ -68,8 +33,6 @@ class matrix {
 	friend cl_platform_id* & get_platforms();
 	friend cl_device_id*& get_devices(cl_platform_id&, const cl_device_type&);
 	friend cl_context& creat_context(const cl_platform_id& pt, const cl_device_id& devices, const int& numofdevcies);
-	friend double*& t2o(const matrix&);
-	friend matrix o2t(const int&, const int&, double*);
 	friend void removemean(matrix& A);
 public:
 	//double*& operator[](int t);
@@ -981,5 +944,42 @@ matrix cov(matrix a) {
 	matrix result = a * aT;
 	result = result * (1.0 / (a.getcol() - 1));
 	return std::move(result);
+}
+
+cl_platform_id* & get_platforms() {
+	cl_int errNum;
+	cl_uint numofpt;
+	cl_platform_id* platforms = NULL;
+	errNum = clGetPlatformIDs(0, NULL, &numofpt);//get the total number of platforms
+	if (errNum != CL_SUCCESS || numofpt <= 0) {
+		std::cerr << "Failed to find any OpenCL platforms" << std::endl;
+	}
+	platforms = new cl_platform_id[numofpt];
+	errNum = clGetPlatformIDs(numofpt, platforms, NULL);
+	if (errNum != CL_SUCCESS || numofpt <= 0) {
+		std::cerr << "Failed to find any OpenCL platforms" << std::endl;
+	}
+	return platforms;
+}
+cl_device_id*& get_devices(cl_platform_id& pt, const cl_device_type& device_type) {
+	cl_int errNum;
+	cl_uint numdevices;
+	cl_device_id* devices = NULL;
+	errNum = clGetDeviceIDs(pt, device_type, 0, NULL, &numdevices);
+	if (errNum != CL_SUCCESS || numdevices <= 0) {
+		std::cerr << "Failed to find any OpenCL devices" << std::endl;
+	}
+	devices = new cl_device_id[numdevices];
+	errNum = clGetDeviceIDs(pt, device_type, numdevices, devices, NULL);
+	if (errNum != CL_SUCCESS || numdevices <= 0) {
+		std::cerr << "Failed to find any OpenCL devices" << std::endl;
+	}
+	return devices;
+}
+
+cl_context& creat_context(const cl_platform_id& pt, const cl_device_id& devices, const int& numofdevcies) {
+	cl_context_properties prop[] = { CL_CONTEXT_PLATFORM,(cl_context_properties)pt,0 };
+	cl_context context = clCreateContext(prop, numofdevcies, &devices, NULL, NULL, NULL);
+	return context;
 }
 #endif
