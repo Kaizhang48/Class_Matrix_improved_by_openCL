@@ -1,3 +1,4 @@
+#pragma once
 #ifndef MATRIX
 #define MATRIX
 #include <iostream>
@@ -47,50 +48,31 @@ cl_device_id*& get_devices(cl_platform_id& pt, const cl_device_type& device_type
 	return devices;
 }
 
-cl_context& creat_context(const cl_platform_id& pt,const cl_device_id& devices, const int& numofdevcies ) {
+cl_context& creat_context(const cl_platform_id& pt, const cl_device_id& devices, const int& numofdevcies) {
 	cl_context_properties prop[] = { CL_CONTEXT_PLATFORM,(cl_context_properties)pt,0 };
 	cl_context context = clCreateContext(prop, numofdevcies, &devices, NULL, NULL, NULL);
 	return context;
 }
 
-double** init_mat(const int row, const int col, double c = 0) {
-	double** d = new double*[row];
-#pragma omp parallel
-	{
-#pragma omp for
-		for (int i = 0; i < row; ++i)
-			d[i] = new double[col];
-	}
-#pragma omp parallel
-	{
-#pragma omp for
-		for (int i = 0; i < row; ++i)
-		{
-			for (int j = 0; j < col; ++j)
-			{
-				d[i][j] = c;
-			}
-		}
-	}
-	return d;
-}
 
 class matrix {
 	friend matrix mean(const matrix&);
 	friend matrix inv(matrix a);
+	friend matrix operator*(matrix& A, const double &B);
 	friend matrix operator* (const matrix& A, const matrix& B);
 	friend matrix operator* (const matrix& A, const double &B);
 	friend matrix operator+ (const matrix& A, const matrix &B);
 	friend matrix operator- (const matrix& A, const matrix& B);
+	friend matrix operator- (matrix& A, matrix& B);
 	friend ostream& operator <<(std::ostream &os, const matrix &m);
 	friend cl_platform_id* & get_platforms();
 	friend cl_device_id*& get_devices(cl_platform_id&, const cl_device_type&);
 	friend cl_context& creat_context(const cl_platform_id& pt, const cl_device_id& devices, const int& numofdevcies);
-	friend double** init_mat(const int, const int, double);
 	friend double*& t2o(const matrix&);
 	friend matrix o2t(const int&, const int&, double*);
+	friend void removemean(matrix& A);
 public:
-	double*& operator[](int t);
+	//double*& operator[](int t);
 	matrix() = default;
 	matrix(double* const a, const int&n);
 	matrix(const int& a, const int& b, const double& c = 0);
@@ -100,7 +82,7 @@ public:
 	~matrix();
 	int getrow()const;
 	int getcol()const;
-	double getdata(const int&i, const int&j)const;
+	double& getdata(const int&i, const int&j);
 	matrix& operator=(const matrix& assignfrom);
 	matrix& operator=(matrix&& moveassignfrom);
 	vector<int> size() const;
@@ -111,121 +93,28 @@ public:
 private:
 	int row;
 	int col;
-	double** data;
+	double* data;
 	void mfree();
 
-	
+
 };
-
-double*& t2o(const matrix&A) {
-	int row = A.row;
-	int col = A.col;
-	auto sz = row * col;
-	double* output = new double[sz];
-	auto maxthreads = omp_get_max_threads();
-	omp_set_num_threads(maxthreads);
-#pragma omp parallel
-	{
-#pragma omp for
-		for (auto i = 0; i < row; ++i) {
-			for (auto j = 0; j < col; ++j) {
-				output[i*col + j] = A.data[i][j];
-			}
-
-		}
-	}
-	return output;
-}
-matrix o2t(const int&r, const int&c, double*a) {
-	return matrix(r, c, a);
-}
-
-double*& matrix::t2o() {
-	auto sz = row * col;
-	double* output = new double[sz];
-	auto maxthreads = omp_get_max_threads();
-	omp_set_num_threads(maxthreads);
-#pragma omp parallel
-	{
-#pragma omp for
-		for (auto i = 0; i < row; ++i) {
-			for (auto j = 0; j < col; ++j) {
-				output[i*col + j] = data[i][j];
-			}
-
-		}
-	}
-	return output;
-}
-
-
-void matrix::o2t(const int& r, const int& c, double*a) {
-	int Trow = r;
-	int Tcol = c;
-	double** d = new double*[Trow];
-#pragma omp parallel
-	{
-#pragma omp for
-		for (int i = 0; i < Trow; ++i) {
-			d[i] = new double[Tcol];
-			for (int j = 0; j < Tcol; ++j)
-			{
-				d[i][j] = a[i*Tcol + j];
-			}
-		}
-	}
-	auto temp = data;
-#pragma omp parallel
-	{
-#pragma omp for
-		for (int i = 0; i < row; ++i)
-		{
-			delete[] temp[i];
-		}
-	}
-	delete[] temp;
-	row = Trow;
-	col = Tcol;
-	data = d;
-	d = NULL;
-}
-
 
 void matrix::mfree() {
 	if (data != nullptr) {
-#pragma omp parallel
-		{
-#pragma omp for
-			for (int i = 0; i < row; ++i)
-			{
-				delete[] data[i];
-			}
-		}
 		delete[] data;
 	}
+	data = nullptr;
 	row = 0;
 	col = 0;
 }
 
-double*& matrix::operator[](int t) {
-	double* &r = data[t];
-	return r;
-}
-matrix::matrix(double* const a, const int&n) :row(1), col(n) {
-	data = new double*[1];
-	data[0] = new double[n];
-	for (int i = 0; i<col; ++i) {
-		data[0][i] = a[i];
-	}
-}
+//double*& matrix::operator[](int t,int j) {
+//	//double* &r = data[t];
+//	return r;
+//}
+//Initiate
 matrix::matrix(const int&a, const int& b, const double& c) :row(a), col(b) {
-	data = new double*[row];
-#pragma omp parallel
-	{
-#pragma omp for
-		for (int i = 0; i < row; ++i)
-			data[i] = new double[col];
-	}
+	data = new double[row*col];
 #pragma omp parallel
 	{
 #pragma omp for
@@ -233,22 +122,21 @@ matrix::matrix(const int&a, const int& b, const double& c) :row(a), col(b) {
 		{
 			for (int j = 0; j < col; ++j)
 			{
-				data[i][j] = c;
+				data[i*col+j] = c;
 			}
 		}
 	}
 }
 
 matrix::matrix(const int&x, const int&y, double*a) :row(x), col(y) {
-	data = new double*[row];
+	data = new double[row*col];
 #pragma omp parallel
 	{
 #pragma omp for
 		for (int i = 0; i < row; ++i) {
-			data[i] = new double[col];
 			for (int j = 0; j < col; ++j)
 			{
-				data[i][j] = a[i*col + j];
+				data[i*col+j] = a[i*col + j];
 			}
 		}
 	}
@@ -259,15 +147,8 @@ matrix::matrix(const matrix &copyfrom)
 	//cout << "this is copy constructor" <<endl;
 	row = copyfrom.row;
 	col = copyfrom.col;
-	data = new double*[row];
-#pragma omp parallel
-	{
-#pragma omp for
-		for (int i = 0; i < row; ++i) {
-			//printf("I am Thread %d\n", omp_get_thread_num());
-			data[i] = new double[col];
-		}
-	}
+	data = new double[row*col];
+
 #pragma omp parallel
 	{
 #pragma omp for
@@ -276,11 +157,12 @@ matrix::matrix(const matrix &copyfrom)
 			//printf("I am Thread %d\n", omp_get_thread_num());
 			for (int j = 0; j < col; ++j)
 			{
-				data[i][j] = copyfrom.data[i][j];
+				data[i*col+j] = copyfrom.data[i*col+j];
 			}
 		}
 	}
 }
+
 matrix::matrix(matrix &&movefrom) {
 	if (movefrom.data != data) {
 		data = movefrom.data;
@@ -291,6 +173,7 @@ matrix::matrix(matrix &&movefrom) {
 		movefrom.col = 0;
 	}
 }
+
 matrix& matrix::operator=(const matrix& assignfrom) {
 	if (assignfrom.data != data) {
 		if (data != nullptr) {
@@ -298,13 +181,8 @@ matrix& matrix::operator=(const matrix& assignfrom) {
 		}
 		row = assignfrom.row;
 		col = assignfrom.col;
-		data = new double*[row];
-#pragma omp parallel
-		{
-#pragma omp for
-			for (int i = 0; i < row; ++i)
-				data[i] = new double[col];
-		}
+		data = new double[row*col];
+
 #pragma omp parallel
 		{
 #pragma omp for
@@ -312,7 +190,7 @@ matrix& matrix::operator=(const matrix& assignfrom) {
 			{
 				for (int j = 0; j < col; ++j)
 				{
-					data[i][j] = assignfrom.data[i][j];
+					data[i*col+j] = assignfrom.data[i*col+j];
 				}
 			}
 		}
@@ -348,8 +226,8 @@ int matrix::getcol()const {
 	return col;
 }
 
-double matrix::getdata(const int&i, const int&j)const {
-	return data[i][j];
+double& matrix::getdata(const int&i, const int&j){
+	return data[i*col+j];
 }
 
 vector<int> matrix::size() const {
@@ -357,7 +235,7 @@ vector<int> matrix::size() const {
 }
 
 matrix& matrix::T() {
-	
+
 	const char *programSouce =
 		"__kernel                                         \n"
 		"void corefunc(const int r,                       \n"
@@ -382,7 +260,7 @@ matrix& matrix::T() {
 	cl_command_queue queue = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err);
 	auto sz = col * row;
 
-	double* d = t2o();
+	double* d = data;
 
 	double*Td = new double[sz];
 	int r = row;
@@ -420,10 +298,15 @@ matrix& matrix::T() {
 	clFinish(queue);
 	err = clEnqueueReadBuffer(queue, c_out, CL_TRUE, 0, sizeof(double)*sz, Td, 0, NULL, NULL);
 
-	o2t(col, row, Td);
+	data = Td;
+	Td = nullptr;
+	col = r;
+	row = c;
 	delete[] global;
+	global = nullptr;
 	delete[]d;
-	delete[]Td;
+	d = nullptr;
+
 	clReleaseProgram(program);
 	clReleaseKernel(kernel);
 	clReleaseMemObject(a_in);
@@ -433,12 +316,15 @@ matrix& matrix::T() {
 	return *this;
 }
 
-
-
 matrix inv(matrix b)
 {
-	double**&a = b.data;
+	double*a = b.data;
 	int& n = b.row;
+	int&col = b.col;
+
+	if (n != col) {
+		throw std::invalid_argument("col and row should be the same!");
+	}
 	int *is = new int[n];
 	int *js = new int[n];
 	int i, j, k;
@@ -449,45 +335,45 @@ matrix inv(matrix b)
 		for (i = k; i <= n - 1; i++)
 			for (j = k; j <= n - 1; j++)
 			{
-				p = fabs(a[i][j]);
+				p = fabs(a[i*col+j]);
 				if (p>d) { d = p; is[k] = i; js[k] = j; }
 			}
 		if (0.0 == d)
 		{
 			free(is); free(js);
-			throw out_of_range("can not be inversed !");
+			throw std::range_error("Can not be inversed !");
 		}
 		if (is[k] != k)
 			for (j = 0; j <= n - 1; j++)
 			{
-				p = a[k][j];
-				a[k][j] = a[is[k]][j];
-				a[is[k]][j] = p;
+				p = a[k*col+j];
+				a[k*col+j] = a[is[k]*col+j];
+				a[is[k]*col+j] = p;
 			}
 		if (js[k] != k)
 			for (i = 0; i <= n - 1; i++)
 			{
-				p = a[i][k];
-				a[i][k] = a[i][js[k]];
-				a[i][js[k]] = p;
+				p = a[i*col+k];
+				a[i*col+k] = a[i*col+js[k]];
+				a[i*col+js[k]] = p;
 			}
-		a[k][k] = 1.0 / a[k][k];
+		a[k*col+k] = 1.0 / a[k*col+k];
 		for (j = 0; j <= n - 1; j++)
 			if (j != k)
 			{
-				a[k][j] *= a[k][k];
+				a[k*col+j] *= a[k*col+k];
 			}
 		for (i = 0; i <= n - 1; i++)
 			if (i != k)
 				for (j = 0; j <= n - 1; j++)
 					if (j != k)
 					{
-						a[i][j] -= a[i][k] * a[k][j];
+						a[i*col+j] -= a[i*col+k] * a[k*col+j];
 					}
 		for (i = 0; i <= n - 1; i++)
 			if (i != k)
 			{
-				a[i][k] = -a[i][k] * a[k][k];
+				a[i*col+k] = -a[i*col+k] * a[k*col+k];
 			}
 	}
 
@@ -497,22 +383,23 @@ matrix inv(matrix b)
 		if (js[k] != k)
 			for (j = 0; j <= n - 1; j++)
 			{
-				p = a[k][j];
-				a[k][j] = a[js[k]][j];
-				a[js[k]][j] = p;
+				p = a[k*col+j];
+				a[k*col+j] = a[js[k]*col+j];
+				a[js[k]*col+j] = p;
 			}
 		if (is[k] != k)
 			for (i = 0; i <= n - 1; i++)
 			{
-				p = a[i][k];
-				a[i][k] = a[i][is[k]];
-				a[i][is[k]] = p;
+				p = a[i*col+k];
+				a[i*col+k] = a[i*col+is[k]];
+				a[i*col+is[k]] = p;
 			}
 	}
 
 	free(is); free(js);
 	return std::move(b);
 }
+
 
 matrix operator*(const matrix& A, const matrix& B) {
 	const char *programSouce =
@@ -522,17 +409,26 @@ matrix operator*(const matrix& A, const matrix& B) {
 		"            const int P,                         \n"
 		"            __global double *a,                  \n"
 		"            __global double *b,                  \n"
-		"            __global double *c)                  \n"
+		"            __global double *c,                  \n"
+		"            __local double *bwrk)                \n"
 		"{                                                \n"
 		"  int k,j;                                       \n"
 		"  int i = get_global_id(0);                      \n"
+		"  int iloc = get_local_id(0);                    \n"
+		"  int nloc = get_local_size(0);                  \n"
+		"  double awrk[1000];                             \n"
 		"  double tmp;                                    \n"
 		"  if (i<N)                                       \n"
 		"   {                                             \n"
+		"		for (k=0;k<P;++k)                         \n"
+		"			awrk[k]=a[i*P+k];                     \n"
 		"		for (j=0;j<M;++j){                        \n"
+		"			for (k=iloc;k<P;k=k+nloc)             \n"
+		"				bwrk[k]=b[k*M+j];                 \n"
+		"		barrier(CLK_LOCAL_MEM_FENCE);             \n"
 		"			tmp=0;                                \n"
 		"			for (k=0;k<P;++k)                     \n"
-		"				tmp+=(a[i*P+k]*b[k*M+j]);         \n"
+		"				tmp+=(awrk[k]*bwrk[k]);           \n"
 		"			c[i*M+j]=tmp;                         \n"
 		"		}                                         \n"
 		"   }                                             \n"
@@ -543,8 +439,8 @@ matrix operator*(const matrix& A, const matrix& B) {
 
 	int PB = B.getrow();
 	int M = B.getcol();
-	if (P!=PB) {
-		throw out_of_range("two matrices do not match the size!");
+	if (P != PB) {
+		throw std::invalid_argument("Two matrices do not match the size!");
 	}
 	auto szA = N * P;
 	auto szB = P * M;
@@ -558,8 +454,8 @@ matrix operator*(const matrix& A, const matrix& B) {
 	cl_context context = creat_context(platform, device, 1);
 	cl_command_queue queue = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err);
 
-	double*a = t2o(A);
-	double*b = t2o(B);
+	double*a = A.data;
+	double*b = B.data;
 
 	double*c = new double[szC];
 
@@ -592,19 +488,23 @@ matrix operator*(const matrix& A, const matrix& B) {
 	err = clSetKernelArg(kernel, 3, sizeof(cl_mem), &a_in);
 	err = clSetKernelArg(kernel, 4, sizeof(cl_mem), &b_in);
 	err = clSetKernelArg(kernel, 5, sizeof(cl_mem), &c_out);
+	err = clSetKernelArg(kernel, 6, sizeof(double)*P, NULL);
 
 	size_t* global = new size_t[1];
+	size_t* local = new size_t[1];
 	global[0] = (size_t)N;
+	local[0] = ((int)N + (int)4) / (int)5;
 
-	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, global, NULL, 0, NULL, NULL);
+	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, global, local, 0, NULL, NULL);
 	clFinish(queue);
 	err = clEnqueueReadBuffer(queue, c_out, CL_TRUE, 0, sizeof(double)*szC, c, 0, NULL, NULL);
 
-	matrix C = o2t(N, M, c);
+	matrix C(M, N, std::move(c));
+	a = nullptr;
+	b = nullptr;
+	c = nullptr;
 	delete[] global;
-	delete[]a;
-	delete[]b;
-	delete[]c;
+
 	clReleaseProgram(program);
 	clReleaseKernel(kernel);
 	clReleaseMemObject(a_in);
@@ -644,8 +544,8 @@ matrix operator*(matrix& A, const double &B) {
 	cl_context context = creat_context(platform, device, 1);
 	cl_command_queue queue = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err);
 
-	double*a = t2o(A);
-	double b =B;
+	double*a = A.data;
+	double b = B;
 	double*c = new double[sz];
 
 	cl_mem a_in = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(double)*sz, NULL, NULL);
@@ -680,10 +580,12 @@ matrix operator*(matrix& A, const double &B) {
 	clFinish(queue);
 	err = clEnqueueReadBuffer(queue, c_out, CL_TRUE, 0, sizeof(double)*sz, c, 0, NULL, NULL);
 
-	matrix C = o2t(row, col, c);
+	matrix C(row, col, std::move(c));
+	c = nullptr;
 	delete[] global;
-	delete[]a;
-	delete[]c;
+	global = nullptr;
+	a = nullptr;
+
 	clReleaseProgram(program);
 	clReleaseKernel(kernel);
 	clReleaseMemObject(a_in);
@@ -720,7 +622,7 @@ matrix operator+ (const matrix& A, const matrix &B) {
 	int Brow = B.getrow();
 	int Bcol = B.getcol();
 	if (row != Brow || col != Bcol) {
-		throw out_of_range("two matrices should have the same size!");
+		throw std::invalid_argument("Two matrices should have the same size!");
 	}
 	auto sz = col * row;
 
@@ -731,9 +633,9 @@ matrix operator+ (const matrix& A, const matrix &B) {
 	cl_device_id device = devices[0];
 	cl_context context = creat_context(platform, device, 1);
 	cl_command_queue queue = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err);
-	
-	double*a = t2o(A);
-	double*b = t2o(B);
+
+	double*a = A.data;
+	double*b = B.data;
 	double*c = new double[sz];
 
 	cl_mem a_in = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(double)*sz, NULL, NULL);
@@ -770,11 +672,14 @@ matrix operator+ (const matrix& A, const matrix &B) {
 	clFinish(queue);
 	err = clEnqueueReadBuffer(queue, c_out, CL_TRUE, 0, sizeof(double)*sz, c, 0, NULL, NULL);
 
-	matrix C=o2t(row, col, c);
+	matrix C (row, col, std::move(c));
+	c = nullptr;
 	delete[] global;
-	delete[]a;
-	delete[]b;
-	delete[]c;
+	global = nullptr;
+
+	a = nullptr;
+	b = nullptr;
+
 	clReleaseProgram(program);
 	clReleaseKernel(kernel);
 	clReleaseMemObject(a_in);
@@ -808,7 +713,7 @@ matrix operator- (matrix& A, matrix& B) {
 	int Brow = B.getrow();
 	int Bcol = B.getcol();
 	if (row != Brow || col != Bcol) {
-		throw out_of_range("two matrices should have the same size!");
+		throw std::invalid_argument("two matrices should have the same size!");
 	}
 	auto sz = col * row;
 
@@ -820,8 +725,8 @@ matrix operator- (matrix& A, matrix& B) {
 	cl_context context = creat_context(platform, device, 1);
 	cl_command_queue queue = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err);
 
-	double*a = t2o(A);
-	double*b = t2o(B);
+	double*a = A.data;
+	double*b = B.data;
 	double*c = new double[sz];
 
 	cl_mem a_in = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(double)*sz, NULL, NULL);
@@ -858,11 +763,14 @@ matrix operator- (matrix& A, matrix& B) {
 	clFinish(queue);
 	err = clEnqueueReadBuffer(queue, c_out, CL_TRUE, 0, sizeof(double)*sz, c, 0, NULL, NULL);
 
-	matrix C = o2t(row, col, c);
+	matrix C(row, col, std::move(c));
+	c = nullptr;
 	delete[] global;
-	delete[]a;
-	delete[]b;
-	delete[]c;
+	global = nullptr;
+
+	a = nullptr;
+	b = nullptr;
+
 	clReleaseProgram(program);
 	clReleaseKernel(kernel);
 	clReleaseMemObject(a_in);
@@ -876,14 +784,16 @@ matrix operator- (matrix& A, matrix& B) {
 
 ostream& operator <<(std::ostream &os, const matrix &m)
 {
-	for (int i = 0; i < m.row; i++)
+	int row = m.row;
+	int col = m.col;
+	for (int i = 0; i < row; i++)
 	{
 		os << " | ";
-		for (int j = 0; j < m.col; j++)
+		for (int j = 0; j < col; j++)
 		{
 			char buf[32];
-			double data = m.data[i][j];
-			if (m.data[i][j] > -0.00001 && m.data[i][j] < 0.00001)
+			double data = m.data[i*col+j];
+			if (m.data[i*col+j] > -0.00001 && m.data[i*col+j] < 0.00001)
 				data = 0;
 			sprintf_s(buf, "%10.10lf ", data);
 			os << buf;
@@ -897,7 +807,7 @@ ostream& operator <<(std::ostream &os, const matrix &m)
 
 
 matrix mean(const matrix& A) {
-	int row= A.getrow();
+	int row = A.getrow();
 	int col = A.getcol();
 	const char *programSouce =
 		"__kernel                                         \n"
@@ -919,7 +829,7 @@ matrix mean(const matrix& A) {
 		"}                                                \n"
 		;
 
-	auto sz = row*col;
+	auto sz = row * col;
 
 	cl_int err;
 	cl_platform_id* pts = get_platforms();
@@ -929,7 +839,7 @@ matrix mean(const matrix& A) {
 	cl_context context = creat_context(platform, device, 1);
 	cl_command_queue queue = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err);
 
-	double*a = t2o(A);
+	double*a = A.data;
 
 	double*c = new double[row];
 
@@ -966,10 +876,11 @@ matrix mean(const matrix& A) {
 	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, global, NULL, 0, NULL, NULL);
 	clFinish(queue);
 	err = clEnqueueReadBuffer(queue, c_out, CL_TRUE, 0, sizeof(double)*row, c, 0, NULL, NULL);
-	matrix C = o2t(row, 1, c);
+	matrix C(row, 1, std::move(c));
+	c = nullptr;
 	delete[] global;
-	delete[]a;
-	delete[]c;
+	global = nullptr;
+	a=nullptr;
 	clReleaseProgram(program);
 	clReleaseKernel(kernel);
 	clReleaseMemObject(a_in);
@@ -984,6 +895,7 @@ void removemean(matrix& A) {
 	matrix miu = mean(A);
 	int row = A.getrow();
 	int col = A.getcol();
+
 	const char *programSouce =
 		"__kernel                                         \n"
 		"void corefunc(const int row,                     \n"
@@ -1011,7 +923,7 @@ void removemean(matrix& A) {
 	cl_context context = creat_context(platform, device, 1);
 	cl_command_queue queue = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err);
 
-	double*a = t2o(miu);
+	double*a = miu.data;
 
 	double*c = new double[sz];
 
@@ -1048,11 +960,12 @@ void removemean(matrix& A) {
 	err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, global, NULL, 0, NULL, NULL);
 	clFinish(queue);
 	err = clEnqueueReadBuffer(queue, c_out, CL_TRUE, 0, sizeof(double)*sz, c, 0, NULL, NULL);
-	matrix C=o2t(row, col, c);
+	matrix C(row, col, c);
+	c = nullptr;
 	A = A - C;
 	delete[] global;
-	delete[]a;
-	delete[]c;
+	global = nullptr;
+	a = nullptr;
 	clReleaseProgram(program);
 	clReleaseKernel(kernel);
 	clReleaseMemObject(a_in);
@@ -1069,6 +982,4 @@ matrix cov(matrix a) {
 	result = result * (1.0 / (a.getcol() - 1));
 	return std::move(result);
 }
-
-
 #endif
