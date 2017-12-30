@@ -18,22 +18,22 @@ using std::endl;
 using std::out_of_range;
 
 cl_platform_id* & get_platforms();
-cl_device_id*& get_devices(cl_platform_id& pt, const cl_device_type& device_type);
-cl_context& creat_context(const cl_platform_id& pt, const cl_device_id& devices, const int& numofdevcies);
+cl_device_id*& get_devices(cl_platform_id&, const cl_device_type& );
+cl_context& creat_context(const cl_platform_id&, const cl_device_id&, const int&);
 
 class matrix {
 	friend matrix mean(const matrix&);
-	friend matrix inv(matrix a);
-	friend matrix operator*(matrix& A, const double &B);
-	friend matrix operator* (const matrix& A, const matrix& B);
-	friend matrix operator+ (const matrix& A, const matrix &B);
-	friend matrix operator- (const matrix& A, const matrix& B);
-	friend matrix operator- (matrix& A, matrix& B);
-	friend ostream& operator <<(std::ostream &os, const matrix &m);
+	friend matrix inv(matrix);
+	friend matrix operator*(matrix&, const double &);
+	friend matrix operator* (const matrix& , const matrix& );
+	friend matrix operator+ (const matrix& , const matrix&);
+	friend matrix operator- (const matrix& , const matrix& );
+	friend matrix operator- (matrix& , matrix& );
+	friend ostream& operator <<(std::ostream &, const matrix &);
 	friend cl_platform_id* & get_platforms();
 	friend cl_device_id*& get_devices(cl_platform_id&, const cl_device_type&);
-	friend cl_context& creat_context(const cl_platform_id& pt, const cl_device_id& devices, const int& numofdevcies);
-	friend void removemean(matrix& A);
+	friend cl_context& creat_context(const cl_platform_id& , const cl_device_id&, const int&);
+	friend void removemean(matrix&);
 public:
 	//double*& operator[](int t);
 	matrix() = default;
@@ -71,11 +71,6 @@ void matrix::mfree() {
 	col = 0;
 }
 
-//double*& matrix::operator[](int t,int j) {
-//	//double* &r = data[t];
-//	return r;
-//}
-//Initiate
 matrix::matrix(const int&a, const int& b, const double& c) :row(a), col(b) {
 	data = new double[row*col];
 #pragma omp parallel
@@ -107,7 +102,6 @@ matrix::matrix(const int&x, const int&y, double*a) :row(x), col(y) {
 
 matrix::matrix(const matrix &copyfrom)
 {
-	//cout << "this is copy constructor" <<endl;
 	row = copyfrom.row;
 	col = copyfrom.col;
 	data = new double[row*col];
@@ -117,7 +111,6 @@ matrix::matrix(const matrix &copyfrom)
 #pragma omp for
 		for (int i = 0; i < row; ++i)
 		{
-			//printf("I am Thread %d\n", omp_get_thread_num());
 			for (int j = 0; j < col; ++j)
 			{
 				data[i*col+j] = copyfrom.data[i*col+j];
@@ -366,13 +359,13 @@ matrix inv(matrix b)
 
 matrix operator*(const matrix& A, const matrix& B) {
 	const char *programSouce =
-		"__kernel                                         \n"
-		"void corefunc(const int M,                       \n"
-		"            const int N,                         \n"
-		"            const int P,                         \n"
-		"            __global double *a,                  \n"
-		"            __global double *b,                  \n"
-		"            __global double *c,                  \n"
+		"__kernel                                         	\n"
+		"void corefunc(const int M,                       	\n"
+		"            const int N,                         	\n"
+		"            const int P,                         	\n"
+		"            __global double *a,                  	\n"
+		"            __global double *b,                  	\n"
+		"            __global double *c,                  	\n"
 		"            __local double *bwrk)                \n"
 		"{                                                \n"
 		"  int k,j;                                       \n"
