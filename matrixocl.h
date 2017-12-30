@@ -17,10 +17,6 @@ using std::cin;
 using std::endl;
 using std::out_of_range;
 
-cl_platform_id* & get_platforms() ;
-cl_device_id*& get_devices(cl_platform_id& pt, const cl_device_type& device_type) ;
-cl_context& creat_context(const cl_platform_id& pt, const cl_device_id& devices, const int& numofdevcies) ;
-
 class matrix {
 	friend matrix mean(const matrix&);
 	friend matrix inv(matrix a);
