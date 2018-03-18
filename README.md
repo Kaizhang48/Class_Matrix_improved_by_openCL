@@ -1,4 +1,5 @@
 # Class_Matrix_improved_by_openCL
+500 times faster than C++ library
 Class Matrix improved by openCL, calculate efficiently especially on matrix with huge size.<br />
 ![image](https://github.com/Kaizhang48/Class_Matrix_improved_by_openCL/blob/master/MATRIX.png?raw=true)<br />
 To Calculate A*B<br />
